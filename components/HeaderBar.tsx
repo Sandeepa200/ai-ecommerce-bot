@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import ThemeToggler from "@/components/ThemeToggler";
+import { UserButton } from "@clerk/nextjs";
 
 const HeaderBar = () => {
   return (
@@ -19,6 +20,7 @@ const HeaderBar = () => {
           <div className="flex items-center space-x-4">
             
             <ThemeToggler />
+            <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </div>

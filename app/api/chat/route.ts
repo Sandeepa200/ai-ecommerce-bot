@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { CartItem } from "@/lib/cart";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
@@ -54,13 +55,21 @@ initialHistory = ecommerceInitialHistory;
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
+    const { message, context } = await req.json();
     const chat = model.startChat({
       generationConfig,
       history: initialHistory,
     });
 
-    const result = await chat.sendMessage(message);
+    const cartItems: CartItem[] = Array.isArray(context?.cart) ? (context.cart as CartItem[]) : [];
+    const categories: string[] = Array.isArray(context?.categories) ? (context.categories as string[]) : [];
+    const productCount: number = typeof context?.productCount === "number" ? context.productCount : 0;
+
+    const contextualMessage = context
+      ? `Context:\n- Cart items: ${cartItems.map((i) => `${i.title} x${i.qty}`).join(", ") || "none"}\n- Categories: ${categories.join(", ")}\n- Product count: ${productCount}\n\nUser: ${message}`
+      : message;
+
+    const result = await chat.sendMessage(contextualMessage);
     const response = await result.response;
     const text = response.text();
 

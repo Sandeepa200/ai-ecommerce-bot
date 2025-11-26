@@ -4,6 +4,8 @@ import "./globals.css";
 import MiniFooter from "@/components/MiniFooter";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import HeaderBar from "@/components/HeaderBar";
+import { ClerkProvider } from "@clerk/nextjs";
+import ChatWidget from "@/components/ChatWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,14 +29,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider attribute="class" defaultTheme="light">
-          <HeaderBar />
-          {children}
-          <MiniFooter />
-        </ThemeProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ClerkProvider>
+          <ThemeProvider attribute="class" defaultTheme="light">
+            <HeaderBar />
+            {children}
+            <MiniFooter />
+            <ChatWidget />
+          </ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
