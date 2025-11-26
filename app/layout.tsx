@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import HeaderBar from "@/components/HeaderBar";
 import { ClerkProvider } from "@clerk/nextjs";
 import ChatWidget from "@/components/ChatWidget";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
             <MiniFooter />
             <ChatWidget />
+            <Toaster richColors />
           </ThemeProvider>
         </ClerkProvider>
       </body>

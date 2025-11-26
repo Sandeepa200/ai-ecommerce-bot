@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Store, ShoppingCart, Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 const HeaderBar = () => {
   const [cartOpen, setCartOpen] = useState(false);
@@ -18,9 +19,11 @@ const HeaderBar = () => {
     const onOpenCart = () => setCartOpen(true);
     window.addEventListener("open-cart", onOpenCart);
     window.addEventListener("storage", refresh);
+    window.addEventListener("cart-updated", refresh as EventListener);
     return () => {
       window.removeEventListener("open-cart", onOpenCart);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("cart-updated", refresh as EventListener);
     };
   }, []);
 
@@ -80,7 +83,7 @@ const HeaderBar = () => {
                           <div className="flex-1 space-y-2">
                             <div className="flex justify-between items-start">
                               <h4 className="font-medium text-sm">{i.title}</h4>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1" onClick={() => { setItems(Cart.remove(i.productId)); }}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1" onClick={() => { setItems(Cart.remove(i.productId)); toast.info("Item removed from cart"); }}>
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>

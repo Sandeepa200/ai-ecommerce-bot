@@ -5,6 +5,7 @@ import { getProductBySlug } from "@/data/products";
 import { Cart } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 import { History } from "@/lib/history";
+import { toast } from "sonner";
 
 export default function ProductDetailClient({ slug }: { slug: string }) {
   const product = getProductBySlug(slug);
@@ -47,7 +48,8 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               className="w-20 rounded border px-2 py-1 bg-background"
             />
             <Button
-              onClick={() =>
+              onClick={() => {
+                const existing = Cart.get().find((i) => i.productId === product.id);
                 Cart.add({
                   productId: product.id,
                   slug: product.slug,
@@ -55,8 +57,11 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                   price: product.price,
                   imageUrl: product.imageUrl,
                   qty,
-                })
-              }
+                });
+                if (existing) toast.success("Updated quantity in cart");
+                else toast.success("Added to cart");
+                window.dispatchEvent(new Event("cart-updated"));
+              }}
             >
               Add to Cart
             </Button>

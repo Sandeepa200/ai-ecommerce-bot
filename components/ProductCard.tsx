@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/data/products";
 import { Cart } from "@/lib/cart";
+import { toast } from "sonner";
 
 type Props = { product: Product };
 
@@ -42,7 +43,8 @@ export default function ProductCard({ product }: Props) {
       <div className="px-4 pb-4 pt-0 flex gap-2">
         <Button
           aria-label={`Add ${product.title} to cart`}
-          onClick={() =>
+          onClick={() => {
+            const existing = Cart.get().find((i) => i.productId === product.id);
             Cart.add({
               productId: product.id,
               slug: product.slug,
@@ -50,8 +52,11 @@ export default function ProductCard({ product }: Props) {
               price: product.price,
               imageUrl: product.imageUrl,
               qty: 1,
-            })
-          }
+            });
+            if (existing) toast.success("Updated quantity in cart");
+            else toast.success("Added to cart");
+            window.dispatchEvent(new Event("cart-updated"));
+          }}
           className="w-full"
         >
           Add to Cart
