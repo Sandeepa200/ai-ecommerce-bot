@@ -8,7 +8,7 @@ type Props = { product: Product };
 
 export default function ProductCard({ product }: Props) {
   return (
-    <div className="rounded-xl border bg-white/60 dark:bg-gray-800/60 p-4 shadow-sm">
+    <div className="rounded-xl border bg-card text-card-foreground p-4 shadow-sm">
       <Link href={`/products/${product.slug}`} className="block">
         <img
           src={product.imageUrl}
@@ -18,12 +18,13 @@ export default function ProductCard({ product }: Props) {
         />
         <div className="mt-3">
           <h3 className="text-sm font-semibold">{product.title}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{product.category}</p>
+          <p className="text-xs text-muted-foreground">{product.category}</p>
           <p className="mt-2 font-bold">${product.price.toFixed(2)}</p>
         </div>
       </Link>
       <div className="mt-3 flex gap-2">
         <Button
+          aria-label={`Add ${product.title} to cart`}
           onClick={() =>
             Cart.add({
               productId: product.id,

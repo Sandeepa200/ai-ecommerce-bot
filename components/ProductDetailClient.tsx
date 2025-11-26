@@ -26,7 +26,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
         <img src={product.imageUrl} alt={product.title} className="w-full rounded-xl" />
         <div>
           <h1 className="text-2xl font-bold">{product.title}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300">{product.category}</p>
+          <p className="text-sm text-muted-foreground">{product.category}</p>
           <p className="mt-3">{product.description}</p>
           <div className="mt-3 space-y-1">
             {product.specifications.map((s) => (
@@ -43,7 +43,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
               min={1}
               value={qty}
               onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || "1", 10)))}
-              className="w-20 rounded border px-2 py-1 bg-white dark:bg-gray-800"
+              className="w-20 rounded border px-2 py-1 bg-background"
             />
             <Button
               onClick={() =>
