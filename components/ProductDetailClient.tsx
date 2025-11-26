@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { getProductBySlug } from "@/data/products";
 import { Cart } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
   return (
     <div className="pt-24 container mx-auto max-w-4xl">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <img src={product.imageUrl} alt={product.title} className="w-full rounded-xl" />
+        <Image src={product.imageUrl} alt={product.title} width={600} height={600} className="w-full rounded-xl" />
         <div>
           <h1 className="text-2xl font-bold">{product.title}</h1>
           <p className="text-sm text-muted-foreground">{product.category}</p>

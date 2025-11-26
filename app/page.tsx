@@ -12,7 +12,7 @@ export default function Home() {
     <div className="min-h-screen bg-background pt-24 pb-6">
       <Navbar onSearch={setQ} />
       <div className="container mx-auto max-w-6xl">
-        <div className="mb-6 rounded-2xl p-6 bg-secondary">
+        <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight">Featured Products</h1>
           <p className="text-sm text-secondary-foreground/80">Discover popular items across categories</p>
         </div>

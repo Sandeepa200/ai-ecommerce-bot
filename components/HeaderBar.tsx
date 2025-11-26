@@ -57,7 +57,7 @@ const HeaderBar = () => {
       <aside
         role="dialog"
         aria-modal="true"
-        className={`fixed top-0 right-0 z-[70] h-full w-full md:w-[380px] bg-white dark:bg-gray-900 shadow-xl border-l border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 z-[70] h-full w-full md:w-[380px] bg-background shadow-xl border-l transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex items-center justify-between p-4 border-b">
           <div className="font-semibold">Your Cart</div>

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Cart, type CartItem } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
 
@@ -22,7 +23,7 @@ export default function CartPage() {
         <div className="space-y-3">
           {items.map((i) => (
             <div key={i.productId} className="flex items-center gap-3 border rounded p-2">
-              <img src={i.imageUrl} alt={i.title} className="h-16 w-16 rounded object-cover" />
+              <Image src={i.imageUrl} alt={i.title} width={64} height={64} className="h-16 w-16 rounded object-cover" />
               <div className="flex-1">
                 <div className="font-medium">{i.title}</div>
                 <div className="text-sm">${i.price.toFixed(2)}</div>

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/data/products";
 import { Cart } from "@/lib/cart";
@@ -8,13 +9,14 @@ type Props = { product: Product };
 
 export default function ProductCard({ product }: Props) {
   return (
-    <div className="rounded-xl border bg-card text-card-foreground p-4 shadow-sm">
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
       <Link href={`/products/${product.slug}`} className="block">
-        <img
+        <Image
           src={product.imageUrl}
           alt={product.title}
-          className="h-48 w-full object-cover rounded-lg"
-          loading="lazy"
+          width={400}
+          height={400}
+          className="h-48 w-full object-cover rounded-t-lg"
         />
         <div className="mt-3">
           <h3 className="text-sm font-semibold">{product.title}</h3>
