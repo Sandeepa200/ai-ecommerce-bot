@@ -8,23 +8,38 @@ import { Cart } from "@/lib/cart";
 type Props = { product: Product };
 
 export default function ProductCard({ product }: Props) {
+  const lowStock = product.inventory < 20;
   return (
-    <div className="rounded-lg border bg-card text-card-foreground shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
+    <div className="group overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-glow hover:-translate-y-1">
       <Link href={`/products/${product.slug}`} className="block">
-        <Image
-          src={product.imageUrl}
-          alt={product.title}
-          width={400}
-          height={400}
-          className="h-48 w-full object-cover rounded-t-lg"
-        />
-        <div className="mt-3">
-          <h3 className="text-sm font-semibold">{product.title}</h3>
-          <p className="text-xs text-muted-foreground">{product.category}</p>
-          <p className="mt-2 font-bold">${product.price.toFixed(2)}</p>
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          <Image src={product.imageUrl} alt={product.title} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+          <div className="absolute top-3 right-3">
+            <span className="bg-primary/90 text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold shadow-md">${product.price.toFixed(2)}</span>
+          </div>
+          {lowStock && (
+            <div className="absolute top-3 left-3">
+              <span className="bg-destructive text-destructive-foreground px-2 py-1 rounded-full text-xs font-medium">Low Stock</span>
+            </div>
+          )}
+        </div>
+        <div className="p-4">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">{product.category}</span>
+          <h3 className="font-semibold text-lg mt-1 mb-2 hover:text-primary transition-colors">{product.title}</h3>
+          <p className="text-sm text-muted-foreground mb-3">{product.description}</p>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <span className="inline-block h-4 w-4 rounded-full bg-accent" />
+              <span className="font-medium">4.5</span>
+              <span className="text-muted-foreground">(128)</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span>{product.inventory} in stock</span>
+            </div>
+          </div>
         </div>
       </Link>
-      <div className="mt-3 flex gap-2">
+      <div className="px-4 pb-4 pt-0 flex gap-2">
         <Button
           aria-label={`Add ${product.title} to cart`}
           onClick={() =>
@@ -37,11 +52,9 @@ export default function ProductCard({ product }: Props) {
               qty: 1,
             })
           }
+          className="w-full"
         >
           Add to Cart
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href={`/products/${product.slug}`}>View</Link>
         </Button>
       </div>
     </div>

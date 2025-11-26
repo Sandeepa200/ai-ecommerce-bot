@@ -1,9 +1,9 @@
 export type Category =
   | "Electronics"
-  | "Home & Kitchen"
-  | "Fashion"
-  | "Sports & Outdoors"
-  | "Beauty & Personal Care";
+  | "Accessories"
+  | "Home"
+  | "Fitness"
+  | "Footwear";
 
 export type ProductSpec = { key: string; value: string };
 
@@ -22,14 +22,35 @@ export type Product = {
 
 const categories: Category[] = [
   "Electronics",
-  "Home & Kitchen",
-  "Fashion",
-  "Sports & Outdoors",
-  "Beauty & Personal Care",
+  "Accessories",
+  "Home",
+  "Fitness",
+  "Footwear",
 ];
 
-function makeImage(id: number) {
-  return `https://picsum.photos/seed/ecom-${id}/800/800`;
+function makeImage(category: Category, index: number) {
+  const byCat: Record<Category, string[]> = {
+    Electronics: [
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80",
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80",
+      "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=800&q=80",
+    ],
+    Accessories: [
+      "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80",
+    ],
+    Home: [
+      "https://images.unsplash.com/photo-1517668808822-9ebb02f2a0e6?w=800&q=80",
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80",
+    ],
+    Fitness: [
+      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=800&q=80",
+    ],
+    Footwear: [
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+    ],
+  };
+  const list = byCat[category];
+  return list[index % list.length];
 }
 
 function makeSpecs(category: Category): ProductSpec[] {
@@ -40,29 +61,29 @@ function makeSpecs(category: Category): ProductSpec[] {
         { key: "Model", value: "X" },
         { key: "Warranty", value: "1 year" },
       ];
-    case "Home & Kitchen":
+    case "Home":
       return [
         { key: "Material", value: "Stainless steel" },
         { key: "Dimensions", value: "Standard" },
         { key: "Care", value: "Dishwasher safe" },
       ];
-    case "Fashion":
+    case "Accessories":
       return [
-        { key: "Material", value: "Cotton" },
-        { key: "Fit", value: "Regular" },
-        { key: "Care", value: "Machine wash cold" },
+        { key: "Material", value: "Polyester" },
+        { key: "Capacity", value: "20L" },
+        { key: "Care", value: "Wipe clean" },
       ];
-    case "Sports & Outdoors":
+    case "Fitness":
       return [
-        { key: "Use", value: "Outdoor" },
-        { key: "Weight", value: "Light" },
+        { key: "Thickness", value: "6mm" },
+        { key: "Grip", value: "Non-slip" },
         { key: "Durability", value: "High" },
       ];
-    case "Beauty & Personal Care":
+    case "Footwear":
       return [
-        { key: "Skin Type", value: "All" },
-        { key: "Volume", value: "100 ml" },
-        { key: "Dermatology Tested", value: "Yes" },
+        { key: "Use", value: "Running" },
+        { key: "Cushioning", value: "Responsive" },
+        { key: "Weight", value: "Light" },
       ];
   }
 }
@@ -80,7 +101,7 @@ function makeProduct(id: number, category: Category): Product {
     description: `High-quality ${category.toLowerCase()} product crafted for everyday use and reliability.`,
     specifications: makeSpecs(category),
     price: Number((20 + (id % 10) * 7.5).toFixed(2)),
-    imageUrl: makeImage(id),
+    imageUrl: makeImage(category, id),
     category,
     inventory: 10 + (id % 15),
     featured: id % 10 === 1,

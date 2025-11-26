@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Cart } from "@/lib/cart";
 import { getProducts } from "@/data/products";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MessageCircle, Send } from "lucide-react";
 import { History } from "@/lib/history";
 import { useUser } from "@clerk/nextjs";
 import type { CartItem } from "@/lib/cart";
@@ -82,42 +84,43 @@ export default function ChatWidget() {
   }, [open, send]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {!open ? (
-        <Button className="rounded-full shadow-lg" size="lg" onClick={() => setOpen(true)}>Chat</Button>
-      ) : (
-        <div className="w-[22rem] md:w-[26rem] h-[28rem] rounded-2xl border bg-card text-card-foreground shadow-2xl flex flex-col">
-          <div className="p-3 border-b flex items-center justify-between">
-            <div className="font-semibold">Support Bot</div>
-            <button className="text-sm" onClick={() => setOpen(false)} aria-label="Close chat">✕</button>
-          </div>
-          <div className="flex-1 p-3 overflow-y-auto space-y-3">
-            {messages.map((m, i) => (
-              <div key={i} className={`text-sm ${m.role === "user" ? "text-right" : "text-left"} animate-message`}>
-                <span className={`inline-block max-w-[85%] px-3 py-2 rounded-2xl shadow-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{m.content}</span>
-              </div>
-            ))}
-          </div>
-          <div className="p-3 border-t flex gap-2">
-            <input
-              className="flex-1 rounded-md border px-3 py-2 bg-background"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about products or returns..."
-            />
-            <Button onClick={send} disabled={sending}>
-              {sending ? (
-                <span className="inline-flex items-center gap-2">
-                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                  Sending
-                </span>
-              ) : (
-                "Send"
-              )}
-            </Button>
+    <>
+      {!open && (
+        <Button size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl" onClick={() => setOpen(true)}>
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+      )}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="relative sm:max-w-[500px] w-[92%] md:w-[500px] h-[600px] rounded-2xl border bg-card text-card-foreground shadow-2xl flex flex-col">
+            <div className="p-4 border-b">
+              <div className="text-lg font-semibold">Shopping Assistant</div>
+              <div className="text-sm text-muted-foreground">Ask me anything about our products or your order!</div>
+            </div>
+            <div className="flex-1 pr-4 p-4 overflow-y-auto space-y-4">
+              {messages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === "bot" ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[80%] rounded-lg p-3 ${m.role === "bot" ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground'}`}>
+                    <p className="text-sm">{m.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-4 border-t p-4">
+              <Input
+                placeholder="Type your message..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+              />
+              <Button onClick={send} size="icon" disabled={sending}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

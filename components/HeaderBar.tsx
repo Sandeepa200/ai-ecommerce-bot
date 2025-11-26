@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
-import ThemeToggler from "@/components/ThemeToggler";
-import { UserButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import { Cart, type CartItem } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Store, ShoppingCart, Minus, Plus, X } from "lucide-react";
+import Image from "next/image";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 
 const HeaderBar = () => {
   const [cartOpen, setCartOpen] = useState(false);
@@ -25,90 +27,95 @@ const HeaderBar = () => {
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b">
-      <div className="container mx-auto px-4 h-16">
-        <div className="flex items-center justify-between h-full">
-          <div className="flex items-center space-x-4">
-            <Link 
-              href="/" 
-              className="text-xl font-semibold hover:text-primary transition-colors"
-            >
-              Ecom Support Bot
-            </Link>
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <Store className="h-6 w-6 text-primary" />
+          <Link href="/" className="text-xl font-bold">ModernShop</Link>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative w-64 hidden md:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              onChange={(e) => {
+                const detail = { q: e.target.value };
+                window.dispatchEvent(new CustomEvent("search", { detail }));
+              }}
+              className="pl-9"
+            />
           </div>
-          
-          <div className="flex items-center space-x-4">
-            
-            <ThemeToggler />
-            <UserButton afterSignOutUrl="/" />
-            <Button onClick={() => setCartOpen(true)}>Cart</Button>
-          </div>
+          <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                {items.reduce((s, i) => s + i.qty, 0) > 0 && (
+                  <span className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                    {items.reduce((s, i) => s + i.qty, 0)}
+                  </span>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>Shopping Cart</SheetTitle>
+                <SheetDescription>
+                  {items.reduce((s, i) => s + i.qty, 0) === 0 ? "Your cart is empty" : `${items.reduce((s, i) => s + i.qty, 0)} item${items.reduce((s, i) => s + i.qty, 0) !== 1 ? 's' : ''} in cart`}
+                </SheetDescription>
+              </SheetHeader>
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-[60vh] text-muted-foreground">
+                  <ShoppingCart className="h-16 w-16 mb-4 opacity-50" />
+                  <p>Start shopping to add items</p>
+                </div>
+              ) : (
+                <>
+                  <div className="h-[calc(100vh-250px)] pr-4 mt-6 overflow-y-auto">
+                    <div className="space-y-4">
+                      {items.map((i) => (
+                        <div key={i.productId} className="flex gap-4 p-4 rounded-lg border bg-card">
+                          <div className="relative w-20 h-20">
+                            <Image src={i.imageUrl} alt={i.title} fill className="object-cover rounded-md" />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-medium text-sm">{i.title}</h4>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1" onClick={() => { setItems(Cart.remove(i.productId)); }}>
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <p className="text-sm font-bold text-primary">${i.price.toFixed(2)}</p>
+                            <div className="flex items-center gap-2">
+                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => { Cart.setQty(i.productId, Math.max(1, i.qty - 1)); setItems(Cart.get()); }}>
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium w-8 text-center">{i.qty}</span>
+                              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => { Cart.setQty(i.productId, i.qty + 1); setItems(Cart.get()); }}>
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-6 bg-background border-t">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center text-lg font-bold">
+                        <span>Total</span>
+                        <span className="text-primary">${subtotal.toFixed(2)}</span>
+                      </div>
+                      <Button className="w-full" size="lg" onClick={() => { setCartOpen(false); window.location.href = '/checkout'; }}>
+                        Checkout
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-      {/* Overlay */}
-      <div
-        aria-hidden={!cartOpen}
-        className={`fixed inset-0 z-[60] bg-black/40 transition-opacity ${cartOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={() => setCartOpen(false)}
-      />
-
-      {/* Side Panel */}
-      <aside
-        role="dialog"
-        aria-modal="true"
-        className={`fixed top-0 right-0 z-[70] h-full w-full md:w-[380px] bg-background shadow-xl border-l transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}
-      >
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="font-semibold">Your Cart</div>
-          <button aria-label="Close cart" onClick={() => setCartOpen(false)}>✕</button>
-        </div>
-        <div className="p-4 space-y-3 overflow-y-auto h-[calc(100%-140px)]">
-          {items.length === 0 && <p className="text-sm text-gray-600">Your cart is empty.</p>}
-          {items.map((i) => (
-            <div key={i.productId} className="flex items-center justify-between gap-3 border rounded p-2">
-              <div className="flex-1">
-                <div className="font-medium text-sm">{i.title}</div>
-                <div className="text-xs text-gray-600">${i.price.toFixed(2)}</div>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  className="px-2 py-1 rounded border"
-                  onClick={() => { Cart.setQty(i.productId, Math.max(1, i.qty - 1)); setItems(Cart.get()); }}
-                  aria-label={`Decrease quantity of ${i.title}`}
-                >
-                  -
-                </button>
-                <span className="w-6 text-center text-sm" aria-live="polite">{i.qty}</span>
-                <button
-                  className="px-2 py-1 rounded border"
-                  onClick={() => { Cart.setQty(i.productId, i.qty + 1); setItems(Cart.get()); }}
-                  aria-label={`Increase quantity of ${i.title}`}
-                >
-                  +
-                </button>
-              </div>
-              <button
-                className="text-xs underline"
-                onClick={() => { Cart.remove(i.productId); setItems(Cart.get()); }}
-                aria-label={`Remove ${i.title} from cart`}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-        <div className="p-4 border-t">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm">Subtotal</span>
-            <span className="font-semibold">${subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex gap-2">
-            <Button className="flex-1" onClick={() => { setCartOpen(false); window.location.href = '/checkout'; }}>Checkout</Button>
-            <Button variant="outline" className="flex-1" onClick={() => { setCartOpen(false); window.location.href = '/cart'; }}>View Cart</Button>
-          </div>
-        </div>
-      </aside>
     </header>
   );
 };
