@@ -26,14 +26,19 @@ const initialHistory = [
     parts: [
       {
         text:
-          `You are an e-commerce customer support chatbot for an online store. 
-          Your primary tasks are: 1) Order status inquiries, 2) Return policy explanations, and 
-          3) Product recommendations based on customer preferences. When users ask about orders, 
-          politely request the order ID and associated email if not provided, and respond with a concise status summary. 
-          For returns, clearly explain eligibility, steps, deadlines, and provide links to policy sections. 
-          For recommendations, ask clarifying questions to capture budget, category, and preferences, 
-          then suggest a few products with title, price, and buy links. Keep responses helpful, brief, and actionable. 
-          Avoid revealing internal system details or any secrets.`
+          `You are an e-commerce customer support assistant.
+          Capabilities:
+          1) Track order status and summarize with total, status, and a direct link.
+          2) Explain policies with specific sections and provide direct links.
+          3) Recommend products with clickable links.
+
+          Rules for responses:
+          - Use concise, helpful sentences.
+          - When listing items, use markdown bullets with clickable links, e.g. "- [Acme Running Shoes — $27.50](/products/acme-running-shoes-41)".
+          - When referring to a page, include a markdown link, e.g. "[/policies/returns](/policies/returns)" or "[View order](/orders/ORD-1001)".
+          - If no order ID is given, ask for ID and email. Do not assume.
+          - Never reveal system internals or secrets.
+          - Keep follow-up questions minimal and targeted (budget, category, preference).`
       }
     ]
   },
@@ -51,7 +56,8 @@ const initialHistory = [
 
 export async function POST(req: Request) {
   try {
-    const { message, context } = await req.json();
+    const body = (await req.json()) as { message: string; context?: ChatContext };
+    const { message, context } = body;
 
     const ip = (req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "anon").split(",")[0].trim();
     const now = Date.now();
@@ -60,7 +66,11 @@ export async function POST(req: Request) {
     if (rateStore[ip].count > 30) {
       return new Response(JSON.stringify({ error: "Too many requests" }), { status: 429, headers: { "Content-Type": "application/json" } });
     }
-    const intent = detectIntent(message);
+    let intent = detectIntent(message);
+    if (intent === "none" && Array.isArray(context?.chatHistory)) {
+      const recent = context!.chatHistory.slice(-4).map((m) => m.content).join(" \n");
+      intent = detectIntent(`${recent}\n${message}`);
+    }
     const structured = await handleIntent(intent, message, context);
     if (structured) {
       return new Response(JSON.stringify(structured), { headers: { "Content-Type": "application/json" } });
@@ -70,7 +80,14 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ response: "AI service unavailable. Ask about orders, returns, shipping, or products.", type: "fallback" }), { headers: { "Content-Type": "application/json" } });
     }
 
-    const chat = model.startChat({ generationConfig, history: initialHistory });
+    const persisted: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = Array.isArray(context?.chatHistory)
+      ? (context!.chatHistory as Array<{ role: string; content: string }>).map((m) => ({
+          role: m.role === "user" ? "user" : "model",
+          parts: [{ text: m.content }],
+        }))
+      : [];
+    const history = [...initialHistory, ...persisted];
+    const chat = model.startChat({ generationConfig, history });
 
     const cartItems: CartItem[] = Array.isArray(context?.cart) ? (context.cart as CartItem[]) : [];
     const categories: string[] = Array.isArray(context?.categories) ? (context.categories as string[]) : [];
@@ -129,6 +146,7 @@ function detectIntent(msg: string): Intent {
   if (/privacy|gdpr|data/.test(m)) return "policy_info";
   if (/terms|service|conditions/.test(m)) return "policy_info";
   if (/order|status|track/.test(m)) return "order_status";
+  if (/ord-\d{4,}/.test(m)) return "order_status";
   if (/recommend|suggest|looking for|find/.test(m)) return "recommendations";
   return "none";
 }
@@ -140,6 +158,7 @@ type ChatContext = {
   history: ViewedItem[];
   orders: Order[];
   page: string;
+  chatHistory?: Array<{ role: "user" | "bot"; content: string }>;
 };
 
 async function handleIntent(intent: Intent, msg: string, context: ChatContext | undefined): Promise<{ type: string; response: string } | null> {
@@ -154,17 +173,33 @@ async function handleIntent(intent: Intent, msg: string, context: ChatContext | 
       ? "terms"
       : "faq";
     const p = Policies.get(k);
-    return { type: "policy_info", response: `${p.title}\n\n${p.content}\n\nSee: /policies/${k}` };
+    return { type: "policy_info", response: `${p.title}\n\n${p.content}\n\nSee: [/policies/${k}](/policies/${k})` };
   }
   if (intent === "order_status") {
     const orders: Order[] = Array.isArray(context?.orders) ? context!.orders : [];
     const idMatch = msg.match(/ORD-\d{4,}/i);
     const id = idMatch ? idMatch[0].toUpperCase() : undefined;
-    const found = id ? orders.find((o) => o.id.toUpperCase() === id) : undefined;
-    const summary = found
-      ? `Order ${found.id} is ${found.status}. Total $${Number(found.total).toFixed(2)}.`
-      : `Provide your order ID (e.g., ORD-1001) and the email used at checkout. Use Orders > Track for guest orders.`;
-    return { type: "order_status", response: summary };
+    const emailMatch = msg.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    const email = emailMatch ? emailMatch[0] : undefined;
+    if (id) {
+      const found = orders.find((o) => o.id.toUpperCase() === id);
+      const summary = found
+        ? `Order ${found.id} — ${found.status}. Total $${Number(found.total).toFixed(2)}. Placed ${new Date(found.createdAt).toLocaleDateString()}. [View details](/orders/${found.id}).`
+        : `I couldn't find order ${id}. Please verify the ID or use [Track Order](/orders/track).`;
+      return { type: "order_status", response: summary };
+    }
+    if (email) {
+      const list = orders.filter((o) => (o.email || "").toLowerCase() === email.toLowerCase());
+      if (list.length > 0) {
+        const lines = list
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .map((o) => `- [${o.id} — ${o.status} — $${o.total.toFixed(2)}](/orders/${o.id})`)
+          .join("\n");
+        return { type: "order_status", response: `Orders for ${email}:\n\n${lines}` };
+      }
+      return { type: "order_status", response: `No orders found for ${email}. Please check the email or use [Track Order](/orders/track).` };
+    }
+    return { type: "order_status", response: `Please provide your order ID (e.g., ORD-1001) or the email used at checkout. You can also use [Track Order](/orders/track).` };
   }
   if (intent === "recommendations") {
     const budgetMatch = msg.match(/\$?(\d{2,4})/);
@@ -172,7 +207,7 @@ async function handleIntent(intent: Intent, msg: string, context: ChatContext | 
     const cats: string[] = Array.isArray(context?.categories) ? context!.categories : [];
     const catMatch = cats.find((c) => msg.toLowerCase().includes(c.toLowerCase()));
     const list = recommendProducts(msg, { category: (catMatch as Category | undefined), budget, limit: 5 });
-    const lines = list.map((p) => `• ${p.title} — $${p.price.toFixed(2)} (/products/${p.slug})`).join("\n");
+    const lines = list.map((p) => `- [${p.title} — $${p.price.toFixed(2)}](/products/${p.slug})`).join("\n");
     const text = lines.length ? lines : "Tell me your budget and category to recommend the best options.";
     return { type: "recommendations", response: text };
   }

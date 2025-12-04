@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Cart } from "@/lib/cart";
 import { getProducts } from "@/data/products";
 import { Orders } from "@/lib/orders";
@@ -11,27 +11,11 @@ import type { CartItem } from "@/lib/cart";
 import type { ViewedItem } from "@/lib/history";
 import type { Order } from "@/lib/orders";
 import { useCallback } from "react";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 type Msg = { role: "user" | "bot"; content: string };
 
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function mdToHtml(text: string) {
-  const escaped = escapeHtml(text);
-  const html = escaped
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/_(.+?)_/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\n/g, "<br/>");
-  return { __html: html };
-}
+const CHAT_KEY = "ecom_chat_messages_v1";
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -39,6 +23,7 @@ export default function ChatWidget() {
     role: "bot",
     content: "Hi! I can recommend products, explain returns, and assist with orders."
   }]);
+  const [initialized, setInitialized] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const products = useMemo(() => getProducts(), []);
@@ -55,7 +40,26 @@ export default function ChatWidget() {
     history: ViewedItem[];
     orders: Order[];
     page: string;
+    chatHistory: Msg[];
   };
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw) as Msg[];
+        if (Array.isArray(arr) && arr.length > 0) setMessages(arr);
+      }
+    } catch {}
+    setInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    if (!initialized) return;
+    try {
+      localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-50)));
+    } catch {}
+  }, [messages, initialized]);
 
   const send = useCallback(async () => {
     if (sending) return;
@@ -70,7 +74,7 @@ export default function ChatWidget() {
       const history = History.get();
       const orders: Order[] = Orders.all();
       const page = typeof window !== "undefined" ? window.location.pathname : "/";
-      const context: ChatContext = { ...baseContext, cart, history, orders, page };
+      const context: ChatContext = { ...baseContext, cart, history, orders, page, chatHistory: messages.slice(-12) };
       const resp = await fetch("/api/chat?stream=1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,7 +110,7 @@ export default function ChatWidget() {
     }
     setInput("");
     setSending(false);
-  }, [input, baseContext, sending]);
+  }, [input, baseContext, sending, messages]);
 
   const resetChat = () => {
     setMessages([{ role: "bot", content: "Hi! I can recommend products, explain returns, and assist with orders." }]);
@@ -150,7 +154,11 @@ export default function ChatWidget() {
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === "bot" ? 'justify-start' : 'justify-end'}`}>
                   <div className={`max-w-[80%] rounded-lg p-3 ${m.role === "bot" ? 'bg-muted text-foreground' : 'bg-primary text-primary-foreground'}`}>
-                    <p className="text-sm" dangerouslySetInnerHTML={mdToHtml(m.content)} />
+                    {m.role === "bot" ? (
+                      <MarkdownRenderer content={m.content} />
+                    ) : (
+                      <p className="text-sm">{m.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -170,7 +178,7 @@ export default function ChatWidget() {
               <Button variant="outline" size="sm" onClick={() => quickAsk("What is the returns policy?")}>Returns</Button>
               <Button variant="outline" size="sm" onClick={() => quickAsk("How does shipping work?")}>Shipping</Button>
               <Button variant="outline" size="sm" onClick={() => quickAsk("Recommend footwear under $100")}>Recommendations</Button>
-              <Button variant="outline" size="sm" onClick={() => quickAsk("Track order ORD-1001")}>Track Order</Button>
+              <Button variant="outline" size="sm" onClick={() => quickAsk("Track order")}>Track Order</Button>
             </div>
           </div>
         </div>

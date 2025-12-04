@@ -24,11 +24,11 @@ export default function TrackOrderPage() {
       </div>
       <div className="space-y-3">
         {results.map((o) => (
-          <div key={o.id} className="border rounded p-2">
-            <div className="font-semibold">Order {o.id}</div>
+          <a key={o.id} href={`/orders/${o.id}`} className="block border rounded p-3 hover:border-primary">
+            <div className="font-semibold text-blue-600 underline">Order {o.id}</div>
             <div className="text-sm">Status: {o.status}</div>
             <div className="text-sm">Total: ${o.total.toFixed(2)}</div>
-          </div>
+          </a>
         ))}
         {results.length === 0 && <p>No orders found.</p>}
       </div>
