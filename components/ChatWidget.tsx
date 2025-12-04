@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, X, RotateCcw } from "lucide-react";
 import { History } from "@/lib/history";
-import { useUser } from "@clerk/nextjs";
 import type { CartItem } from "@/lib/cart";
 import type { ViewedItem } from "@/lib/history";
 import type { Order } from "@/lib/orders";
@@ -42,7 +41,6 @@ export default function ChatWidget() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const products = useMemo(() => getProducts(), []);
-  const { user } = useUser();
 
   const baseContext = useMemo(() => ({
     productCount: products.length,
@@ -77,9 +75,7 @@ export default function ChatWidget() {
     try {
       const cart = Cart.get();
       const history = History.get();
-      const orders = user?.id
-        ? (await import("@/lib/orders")).Orders.findByUser(user.id)
-        : [];
+      const orders: Order[] = [];
       const page = typeof window !== "undefined" ? window.location.pathname : "/";
       const context: ChatContext = { ...baseContext, cart, history, orders, page };
       const resp = await fetch("/api/chat", {
@@ -94,7 +90,7 @@ export default function ChatWidget() {
     }
     setInput("");
     setSending(false);
-  }, [input, baseContext, user, sending]);
+  }, [input, baseContext, sending]);
 
   const resetChat = () => {
     setMessages([{ role: "bot", content: "Hi! I can recommend products, explain returns, and assist with orders." }]);

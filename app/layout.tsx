@@ -4,7 +4,6 @@ import "./globals.css";
 import MiniFooter from "@/components/MiniFooter";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import HeaderBar from "@/components/HeaderBar";
-import { ClerkProvider } from "@clerk/nextjs";
 import ChatWidget from "@/components/ChatWidget";
 import { Toaster } from "sonner";
 
@@ -31,15 +30,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ClerkProvider>
-          <ThemeProvider attribute="class" defaultTheme="light">
-            <HeaderBar />
-            {children}
-            <MiniFooter />
-            <ChatWidget />
-            <Toaster richColors />
-          </ThemeProvider>
-        </ClerkProvider>
+        <ThemeProvider attribute="class" defaultTheme="light">
+          <HeaderBar />
+          {children}
+          <MiniFooter />
+          <ChatWidget />
+          <Toaster richColors />
+        </ThemeProvider>
       </body>
     </html>
   );

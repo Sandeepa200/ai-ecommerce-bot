@@ -2,11 +2,9 @@
 import { useEffect, useState } from "react";
 import { Cart, type CartItem } from "@/lib/cart";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@clerk/nextjs";
 
 export default function CheckoutPage() {
   const [items, setItems] = useState<CartItem[]>([]);
-  const { user } = useUser();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
@@ -51,7 +49,7 @@ export default function CheckoutPage() {
               const order = {
                 id,
                 email: email || undefined,
-                userId: user?.id || undefined,
+                userId: undefined,
                 items: items.map((i) => ({ slug: i.slug, title: i.title, qty: i.qty, price: i.price })),
                 total: subtotal,
                 status: "pending" as const,
