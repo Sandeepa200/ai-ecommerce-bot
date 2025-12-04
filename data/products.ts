@@ -419,3 +419,20 @@ export function searchProducts(query: string, category?: Category) {
     return inCategory && (q.length === 0 || text.includes(q));
   });
 }
+
+export function recommendProducts(query: string, opts?: { category?: Category; budget?: number; limit?: number }) {
+  const q = query.trim().toLowerCase();
+  const limit = opts?.limit ?? 5;
+  const base = opts?.category ? allProducts.filter((p) => p.category === opts.category) : allProducts.slice();
+  const scored = base.map((p) => {
+    const text = `${p.title} ${p.description}`.toLowerCase();
+    const titleHit = p.title.toLowerCase().includes(q) ? 2 : 0;
+    const descHit = text.includes(q) ? 1 : 0;
+    const budgetHit = typeof opts?.budget === "number" ? (p.price <= (opts!.budget as number) ? 1 : 0) : 0;
+    const invScore = Math.min(1, p.inventory / 20);
+    const score = titleHit + descHit + budgetHit + invScore;
+    return { p, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((s) => s.p);
+}

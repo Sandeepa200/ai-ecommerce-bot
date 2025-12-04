@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Cart } from "@/lib/cart";
 import { getProducts } from "@/data/products";
+import { Orders } from "@/lib/orders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, X, RotateCcw } from "lucide-react";
@@ -63,28 +64,43 @@ export default function ChatWidget() {
     setMessages((m) => [...m, userMsg]);
     setSending(true);
 
-    // Simple local intent: order status requests if message contains "order"
-    if (/order|status|track/i.test(userMsg.content)) {
-      const reply = "For demo, order status is stored locally. Provide your order ID (e.g., ORD-1001) and email if a guest.";
-      setMessages((m) => [...m, { role: "bot", content: reply }]);
-      setInput("");
-      setSending(false);
-      return;
-    }
 
     try {
       const cart = Cart.get();
       const history = History.get();
-      const orders: Order[] = [];
+      const orders: Order[] = Orders.all();
       const page = typeof window !== "undefined" ? window.location.pathname : "/";
       const context: ChatContext = { ...baseContext, cart, history, orders, page };
-      const resp = await fetch("/api/chat", {
+      const resp = await fetch("/api/chat?stream=1", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg.content, context }),
       });
-      const data = await resp.json();
-      setMessages((m) => [...m, { role: "bot", content: data.response }]);
+      const ct = resp.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const data = await resp.json();
+        setMessages((m) => [...m, { role: "bot", content: data.response }]);
+      } else if (resp.body) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let acc = "";
+        setMessages((m) => [...m, { role: "bot", content: "" }]);
+        let done = false;
+        while (!done) {
+          const { value, done: d } = await reader.read();
+          done = d;
+          if (value) {
+            acc += decoder.decode(value);
+            setMessages((m) => {
+              const copy = m.slice();
+              copy[copy.length - 1] = { role: "bot", content: acc };
+              return copy;
+            });
+          }
+        }
+      } else {
+        setMessages((m) => [...m, { role: "bot", content: "No response" }]);
+      }
     } catch {
       setMessages((m) => [...m, { role: "bot", content: "Sorry, I couldn't process that." }]);
     }
@@ -96,6 +112,11 @@ export default function ChatWidget() {
     setMessages([{ role: "bot", content: "Hi! I can recommend products, explain returns, and assist with orders." }]);
     setInput("");
     setSending(false);
+  };
+
+  const quickAsk = (q: string) => {
+    setInput(q);
+    setTimeout(() => send(), 0);
   };
 
 
@@ -144,6 +165,12 @@ export default function ChatWidget() {
               <Button onClick={send} size="icon" disabled={sending}>
                 <Send className="h-4 w-4" />
               </Button>
+            </div>
+            <div className="flex flex-wrap gap-2 px-4 pb-4">
+              <Button variant="outline" size="sm" onClick={() => quickAsk("What is the returns policy?")}>Returns</Button>
+              <Button variant="outline" size="sm" onClick={() => quickAsk("How does shipping work?")}>Shipping</Button>
+              <Button variant="outline" size="sm" onClick={() => quickAsk("Recommend footwear under $100")}>Recommendations</Button>
+              <Button variant="outline" size="sm" onClick={() => quickAsk("Track order ORD-1001")}>Track Order</Button>
             </div>
           </div>
         </div>

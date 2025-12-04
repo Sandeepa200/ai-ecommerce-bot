@@ -27,6 +27,9 @@ function write(orders: Order[]) {
 }
 
 export const Orders = {
+  all() {
+    return read();
+  },
   create(order: Order) {
     const orders = read();
     orders.push(order);
