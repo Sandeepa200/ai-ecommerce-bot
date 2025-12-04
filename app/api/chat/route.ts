@@ -28,17 +28,22 @@ const initialHistory = [
         text:
           `You are an e-commerce customer support assistant.
           Capabilities:
-          1) Track order status and summarize with total, status, and a direct link.
+          1) Track order status and summarize with total, status, placed date, and a direct link.
           2) Explain policies with specific sections and provide direct links.
-          3) Recommend products with clickable links.
+          3) Recommend products from the provided catalog with clickable links.
+          4) Handle sentiment: detect frustration or confusion; respond empathetically, apologize when appropriate, and offer calm, actionable steps.
+          5) Use multi-turn context: incorporate recent chat history, cart items, viewed products, and current page; avoid repeating already given information; ask one concise follow-up at a time.
+          6) Escalate gracefully: when the user requests human help or you cannot resolve, link to the relevant page (e.g., [/policies/faq](/policies/faq) or [/policies/returns](/policies/returns)) and outline the next steps.
 
           Rules for responses:
-          - Use concise, helpful sentences.
+          - Be concise and helpful; use plain language and a friendly, professional tone.
           - When listing items, use markdown bullets with clickable links, e.g. "- [Acme Running Shoes — $27.50](/products/acme-running-shoes-41)".
           - When referring to a page, include a markdown link, e.g. "[/policies/returns](/policies/returns)" or "[View order](/orders/ORD-1001)".
-          - If no order ID is given, ask for ID and email. Do not assume.
-          - Never reveal system internals or secrets.
-          - Keep follow-up questions minimal and targeted (budget, category, preference).`
+          - For order tracking: if no order ID is given, ask for ID and email; if only email is provided, list all matching orders as bullets with links; never assume a latest order.
+          - If an order or product cannot be found, say so clearly, suggest alternatives, and include a helpful link (e.g., "[Track Order](/orders/track)").
+          - Respect safety and privacy: never ask for payment card numbers, CVV, passwords, or other sensitive data; request only email and order ID for tracking.
+          - Keep follow-up questions minimal and targeted (budget, category, preference); ask one at a time.
+          - Keep formatting clean; avoid raw HTML; use only markdown.`
       }
     ]
   },
@@ -67,9 +72,12 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: "Too many requests" }), { status: 429, headers: { "Content-Type": "application/json" } });
     }
     let intent = detectIntent(message);
-    if (intent === "none" && Array.isArray(context?.chatHistory)) {
-      const recent = context!.chatHistory.slice(-4).map((m) => m.content).join(" \n");
-      intent = detectIntent(`${recent}\n${message}`);
+    const emailOnly = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(message);
+    if (emailOnly && inOrderFlow(context?.chatHistory)) {
+      intent = "order_status";
+    } else if (intent === "none" && Array.isArray(context?.chatHistory) && hasSupportCue(message)) {
+      const recentUser = context!.chatHistory.filter((m) => m.role === "user").slice(-3).map((m) => m.content).join(" \n");
+      intent = detectIntent(`${recentUser}\n${message}`);
     }
     const structured = await handleIntent(intent, message, context);
     if (structured) {
@@ -93,9 +101,21 @@ export async function POST(req: Request) {
     const categories: string[] = Array.isArray(context?.categories) ? (context.categories as string[]) : [];
     const productCount: number = typeof context?.productCount === "number" ? context.productCount : 0;
 
+    const hints: string[] = [];
+    let topicDecision: "switch" | "continue" | "unknown" = "unknown";
+    if (intent === "none" && !hasSupportCue(message)) {
+      topicDecision = await classifyTopic(message, context?.chatHistory);
+    }
+    if (topicDecision === "switch") {
+      hints.push(
+        "User changed topic; provide a friendly overview of capabilities with markdown links: [/orders/track](/orders/track), [/policies/returns](/policies/returns), [/policies/shipping](/policies/shipping), [/policies/privacy](/policies/privacy), [/policies/faq](/policies/faq). Ask one concise follow-up."
+      );
+    }
+    const hintText = hints.length ? `\n\nAssistant directive:\n- ${hints.join("\n- ")}` : "";
+
     const contextualMessage = context
-      ? `Context:\n- Cart items: ${cartItems.map((i) => `${i.title} x${i.qty}`).join(", ") || "none"}\n- Categories: ${categories.join(", ")}\n- Product count: ${productCount}\n\nUser: ${message}`
-      : message;
+      ? `Context:\n- Cart items: ${cartItems.map((i) => `${i.title} x${i.qty}`).join(", ") || "none"}\n- Categories: ${categories.join(", ")}\n- Product count: ${productCount}\n\nUser: ${message}${hintText}`
+      : `${message}${hintText}`;
 
     const url = new URL(req.url);
     const stream = url.searchParams.get("stream") === "1";
@@ -212,4 +232,35 @@ async function handleIntent(intent: Intent, msg: string, context: ChatContext | 
     return { type: "recommendations", response: text };
   }
   return null;
+}
+function isTopicSwitch(msg: string): boolean {
+  return /what\s+can\s+you\s+do|what\s+else\s+can\s+you\s+do|who\s+are\s+you|help\b|capabilit|menu\b|options\b|how\s+can\s+you\s+assist/i.test(msg.toLowerCase());
+}
+function hasSupportCue(msg: string): boolean {
+  return /order|status|track|return|refund|exchange|ship|shipping|delivery|privacy|terms|recommend|suggest|looking for|find/i.test(msg.toLowerCase());
+}
+function inOrderFlow(history?: Array<{ role: "user" | "bot"; content: string }>): boolean {
+  if (!Array.isArray(history)) return false;
+  const text = history.slice(-6).map((m) => m.content.toLowerCase()).join(" ");
+  return /track|status|order/.test(text) || /provide .*order id/.test(text) || /email used at checkout/.test(text) || /ord-\d{4,}/.test(text);
+}
+async function classifyTopic(message: string, history?: Array<{ role: "user" | "bot"; content: string }>): Promise<"switch" | "continue" | "unknown"> {
+  if (!model) return isTopicSwitch(message) ? "switch" : "unknown";
+  const recent = Array.isArray(history) ? history.slice(-6).map((m) => `${m.role}: ${m.content}`).join("\n") : "";
+  const prompt = [
+    "You are a classifier for an e-commerce assistant.",
+    "Decide if the user is changing topic away from the current thread.",
+    "Return one word: SWITCH, CONTINUE, or UNKNOWN.",
+    `User: ${message}`,
+    recent ? `Recent:\n${recent}` : "",
+  ].join("\n");
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim().toUpperCase();
+    if (text.includes("SWITCH")) return "switch";
+    if (text.includes("CONTINUE")) return "continue";
+    return "unknown";
+  } catch {
+    return isTopicSwitch(message) ? "switch" : "unknown";
+  }
 }
